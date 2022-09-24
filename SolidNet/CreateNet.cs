@@ -8,11 +8,14 @@ using System.Data;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Net.Mail;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Xml.Linq;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.Tab;
 
 namespace SolidNet
 {
@@ -29,12 +32,19 @@ namespace SolidNet
 
         public CreateNet()
         {
-    
 
             InitializeComponent();
 
+            foreach (Control ctrl in this.Controls)
+            {
+                if (ctrl is System.Windows.Forms.TextBox)
+                {
+                    ctrl.TextChanged += new EventHandler(WTextChanged);
+                }
 
-           
+            }
+
+
 
             DataColumn dt1_col1 = new DataColumn("间距",typeof(int));
             DataColumn dt1_col2 = new DataColumn("数量", typeof(int));
@@ -52,8 +62,10 @@ namespace SolidNet
 
             dt2.Columns.Add(dt2_col1);
             dt2.Columns.Add(dt2_col2);
-            DataRow row2 = dt2.NewRow();
-            dt2.Rows.Add(row2);
+            DataRow row21 = dt2.NewRow();
+
+            dt2.Rows.Add(row21);
+    
 
             dataGrid_View1.DataSource= dt1;
             dataGrid_View1.Rows[0].Cells[0].Value = "60";
@@ -77,7 +89,7 @@ namespace SolidNet
                 this.dataGrid_View2.Columns[i].SortMode = DataGridViewColumnSortMode.NotSortable;
             }
 
-            dataGrid_View2.Rows[0].Cells[0].Value = "90";
+            dataGrid_View2.Rows[0].Cells[0].Value = "50";
             dataGrid_View2.Rows[0].Cells[1].Value = "10";
             dataGrid_View2.AutoGenerateColumns = true;
             dataGrid_View2.RowHeadersVisible = false;
@@ -86,23 +98,26 @@ namespace SolidNet
             dataGrid_View2.AllowUserToResizeRows = false;
 
 
-            swNetData.D1 = 4;
-            tB_D1.DataBindings.Add("Text", swNetData, "D1", false, DataSourceUpdateMode.OnPropertyChanged);
+            //swNetData.D1 = 4;
+            //tB_D1.DataBindings.Add("Text", swNetData, "D1", false, DataSourceUpdateMode.OnPropertyChanged);
 
-            swNetData.D2 = 3;
-            tB_D2.DataBindings.Add("Text", swNetData, "D2", false, DataSourceUpdateMode.OnPropertyChanged);
+            //swNetData.D2 = 3;
+            //tB_D2.DataBindings.Add("Text", swNetData, "D2", false, DataSourceUpdateMode.OnPropertyChanged);
 
-            swNetData.H = 300;
+            tB_D2.Text = "3.0";
+            tB_D1.Text = "4.0";
+
+            swNetData.H = 500;
             tB_H.DataBindings.Add("Text", swNetData, "H", false, DataSourceUpdateMode.OnPropertyChanged);
             swNetData.Hs1 = 30;
             tB_Hs1.DataBindings.Add("Text", swNetData, "Hs1", false, DataSourceUpdateMode.OnPropertyChanged);
-            swNetData.Hs2 = 20;
+            swNetData.Hs2 = 0;
             tB_Hs2.DataBindings.Add("Text", swNetData, "Hs2", false, DataSourceUpdateMode.OnPropertyChanged);
-            swNetData.Hd1 = 100;
+            swNetData.Hd1 = 90;
             tB_Hd1.DataBindings.Add("Text", swNetData, "Hd1", false, DataSourceUpdateMode.OnPropertyChanged);
             swNetData.Hd2 = 120;
             tB_Hd2.DataBindings.Add("Text", swNetData, "Hd2", false, DataSourceUpdateMode.OnPropertyChanged);
-            swNetData.L1= 1000;
+            swNetData.L1= 964;
             tB_L1.DataBindings.Add("Text", swNetData, "L1", false, DataSourceUpdateMode.OnPropertyChanged);
 
         }
@@ -283,25 +298,26 @@ namespace SolidNet
                     //草图绘制基础圆
                     swModel.Extension.SelectByID2("基准面1", "PLANE", 0, 0, 0, false, 0, null, 0);
                     swModel.SketchManager.InsertSketch(true);
-
-
-                    double Xnoths1 = 0;
                     ModelView modelView = (ModelView)swModel.ActiveView;
-                    
-                    modelView.Scale2 = 10.00;
-                    
+                    //swModel.ViewZoomtofit2();
+                    modelView.Scale2 = 15.00;
+
+                    double dy = (swNetData.d1 + swNetData.d2) / 2 - 0.1/1000.00;
+
+
+
+                    double Xnoths1;
                     //swModel.Extension.SelectByID2("Line1@草图1", "EXTSKETCHSEGMENT", 0, 0, 0, true, 0, null, 1);
                     if (swNetData.hs1 != 0)
                     {
                         double offx = 0;
-                        double hs1x = 0;
                         double offy = swNetData.hs1 - swNetData.d2 / 2;
-                        if (swNetData.hd1!=0)
+                        if (swNetData.hd1 != 0)
                         {
                             double Lsin = swNetData.hs1 / Math.Sin(SMath.toRadians(180 - swNetData.Hd1));
                             double Lx = Lsin * Math.Cos(SMath.toRadians(180 - swNetData.Hd1));
                             double x = (swNetData.d1) / 2;
-                            double y = (swNetData.d1 + swNetData.d1) / 2.5;
+                            double y = dy;
                             double xp = x * Math.Cos(SMath.toRadians(-swNetData.Hd1)) - y * Math.Sin(SMath.toRadians(-swNetData.Hd1));
                             double yp = x * Math.Sin(SMath.toRadians(-swNetData.Hd1)) + y * Math.Cos(SMath.toRadians(-swNetData.Hd1));
 
@@ -309,13 +325,13 @@ namespace SolidNet
                             offy = swNetData.hs1 + yp;
                         }
 
-                        hs1x = 0 - offx;
+                        double hs1x = 0 - offx;
 
                         swModel.SketchManager.CreateCircle(hs1x, offy, 0, hs1x + swNetData.d2 / 2, offy, 0);
 
-                      
+
                         Xnoths1 = swNetData.d2 * 2;
-                        swModel.SketchManager.CreateCircle(Xnoths1, -(swNetData.d1 + swNetData.d2) / 2.1, 0, Xnoths1 + swNetData.d2 / 2, -(swNetData.d1 + swNetData.d2) / 2.1, 0);
+                        swModel.SketchManager.CreateCircle(Xnoths1, -dy, 0, Xnoths1 + swNetData.d2 / 2, -dy, 0);
 
                         foreach (DataGridViewRow item in dataGrid_View2.Rows)
                         {
@@ -324,8 +340,8 @@ namespace SolidNet
                                 for (int i = 0; i < int.Parse(item.Cells[1].Value.ToString()); i++)
                                 {
                                     Xnoths1 += double.Parse(item.Cells[0].Value.ToString()) / 1000.00;
-                                    if (Xnoths1 > (swNetData.h - swNetData.d2)) break;
-                                    swModel.SketchManager.CreateCircle(Xnoths1, -(swNetData.d1 + swNetData.d2) / 2.1, 0, Xnoths1 + swNetData.d2 / 2, -(swNetData.d1 + swNetData.d2) / 2.1, 0);
+                                    if (Xnoths1 > (swNetData.h - (swNetData.d2 * 2))) continue;
+                                    swModel.SketchManager.CreateCircle(Xnoths1, -dy, 0, Xnoths1 + swNetData.d2 / 2, -dy, 0);
                                 }
                             }
                         }
@@ -334,9 +350,7 @@ namespace SolidNet
                     else
                     {
                         Xnoths1 = swNetData.d2 / 2;
-                       
-                       
-                        swModel.SketchManager.CreateCircle(Xnoths1, -(swNetData.d1 + swNetData.d2)/2.1, 0, Xnoths1 + swNetData.d2 / 2, -(swNetData.d1 + swNetData.d2)/2.1, 0);
+                        swModel.SketchManager.CreateCircle(Xnoths1, -dy, 0, Xnoths1 + swNetData.d2 / 2, -dy, 0);
                         modelView.RollBy(0);
                         foreach (DataGridViewRow item in dataGrid_View2.Rows)
                         {
@@ -345,12 +359,12 @@ namespace SolidNet
                                 for (int i = 0; i < int.Parse(item.Cells[1].Value.ToString()); i++)
                                 {
                                     Xnoths1 += double.Parse(item.Cells[0].Value.ToString()) / 1000.00;
-                                    if (Xnoths1 > (swNetData.h- swNetData.d2)) break;
-                                    swModel.SketchManager.CreateCircle(Xnoths1, -(swNetData.d1 + swNetData.d2) / 2.1, 0, Xnoths1+swNetData.d2/2, -(swNetData.d1 + swNetData.d2) / 2.1, 0);
+                                    if (Xnoths1 > (swNetData.h - (swNetData.d2 * 2))) continue;
+                                    swModel.SketchManager.CreateCircle(Xnoths1, -dy, 0, Xnoths1 + swNetData.d2 / 2, -dy, 0);
                                 }
                             }
                         }
-                      
+
                     }
 
                     if (swNetData.hs2 != 0)
@@ -358,7 +372,7 @@ namespace SolidNet
                         double offx = 0;
                         double hs1x = 0;
                         double offy = swNetData.hs2 - swNetData.d2 / 2;
-                        if (swNetData.hd1 != 0)
+                        if (swNetData.hd2 != 0)
                         {
                             double Lsin = swNetData.hs2/Math.Sin(SMath.toRadians(180 - swNetData.Hd2));
                             double Lx = Lsin * Math.Cos(SMath.toRadians(180 - swNetData.Hd2));
@@ -380,7 +394,7 @@ namespace SolidNet
                     else
                     {
 
-                        swModel.SketchManager.CreateCircle((swNetData.h-swNetData.d2 / 2), (swNetData.d1 + swNetData.d2) / 2.1, 0, swNetData.h, (swNetData.d1 + swNetData.d2) / 2.1, 0);
+                        swModel.SketchManager.CreateCircle((swNetData.h-swNetData.d2 / 2), -dy, 0, swNetData.h, -dy, 0);
                     }
 
                     swModel.ClearSelection2(true);
@@ -405,15 +419,23 @@ namespace SolidNet
                     double[] massProperties;
                     massProperties = (double[])swModelDocExt.GetMassProperties(1, ref massStatus);
 
-                    Debug.Print(" Mass = " + massProperties[5]);
+                    swModel.Extension.SelectByID2("草图4", "SKETCH", 0, 0, 0, false, 0, null, 0);
+                    swModel.BlankSketch();
+                    swModel.Extension.SelectByID2("基准面1", "PLANE", 0, 0, 0, false, 0, null, 0);
+                    swModel.BlankRefGeom();
 
-                    MessageBox.Show( $"重量 : {massProperties[5].ToString("0.0000")} Kg\r\n 密度 :{massProperties[5] / massProperties[3]} 千克/立方米 ", "质量信息");
+                    swModel.ShowNamedView2("*等轴测", 7);
+                    swModel.ViewZoomtofit2();
+                    //Debug.Print(" Mass = " + massProperties[5]);
+                    swApp.SetUserPreferenceToggle((int)swUserPreferenceToggle_e.swInputDimValOnCreate, InputDimFlag);
+                    MessageBox.Show( $"重量:  {massProperties[5].ToString("0.0000")}  Kg\r\n"+
+                        $"密度:   {massProperties[5] / massProperties[3]}  千克/立方米 ", "质量信息");
 
 
                 }
             }
 
-            swApp.SetUserPreferenceToggle((int)swUserPreferenceToggle_e.swInputDimValOnCreate, InputDimFlag);
+    
 
 
         }
@@ -452,6 +474,130 @@ namespace SolidNet
                 if (int.Parse(dataGrid_View2.Rows[0].Cells[1].Value.ToString()) == 0) return;
                 dataGrid_View2.Rows[0].Cells[0].Value = (int)(swNetData.H / int.Parse(dataGrid_View2.Rows[0].Cells[1].Value.ToString()));
             }
+        }
+
+        private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            Process.Start($"mailto: yang.linhao@hotmail.com");
+        }
+
+        private void dataGrid_View1_CellEndEdit(object sender, DataGridViewCellEventArgs e)
+        {
+            double Ltmp = 0;
+            try
+            {
+                foreach (DataGridViewRow item in dataGrid_View1.Rows)
+                {
+                    if ((item.Cells[0].Value != null) && (item.Cells[1].Value != null))
+                    {
+                        Ltmp += double.Parse(item.Cells[0].Value.ToString()) * int.Parse(item.Cells[1].Value.ToString());
+                    }
+                }
+                Ltmp += swNetData.D1;
+
+                //swNetData.L1 = Ltmp;
+                this.tB_L1.Text = Ltmp.ToString();
+
+            }
+            catch (Exception)
+            {
+
+            }
+
+
+        }
+
+
+        private void dataGrid_View2_CellEndEdit(object sender, DataGridViewCellEventArgs e)
+        {
+            double Htmp = 0;
+            try
+            {
+                foreach (DataGridViewRow item in dataGrid_View2.Rows)
+                {
+                    if ((item.Cells[0].Value != null) && (item.Cells[1].Value != null))
+                    {
+                       Htmp += double.Parse(item.Cells[0].Value.ToString()) * int.Parse(item.Cells[1].Value.ToString());
+                    }
+                }
+       
+
+                //swNetData.L1 = Ltmp;
+                this.tB_H.Text = Htmp.ToString();
+
+            }
+            catch (Exception)
+            {
+
+            }
+        }
+
+        private void CreateNet_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void WTextChanged(object sender, EventArgs e)
+        {
+
+            double Lhs1 = 0;
+            double Lhs2 = 0;
+            double cLs  = 1;
+
+            try
+            {
+                swNetData.D1 = double.Parse(tB_D1.Text.ToString());
+                swNetData.D2 = double.Parse(tB_D2.Text.ToString());
+            }
+            catch (Exception)
+            {
+
+            }
+   
+
+            if (swNetData.hd1 != 0 && swNetData.hs1 != 0)
+            {
+                Lhs1 = swNetData.hs1 / Math.Sin(SMath.toRadians(180 - swNetData.Hd1));
+                cLs += 1;
+            }
+
+            if (swNetData.hd2 != 0 && swNetData.hs2 != 0)
+            {
+                Lhs2 = swNetData.hs2 / Math.Sin(SMath.toRadians(180 - swNetData.Hd2));
+            }
+
+            double wHs = (Lhs1 + Lhs2 + swNetData.h) * (swNetData.d1/2)* (swNetData.d1 / 2) *Math.PI * 7800;
+            double cHs = 1;
+            foreach (DataGridViewRow item in dataGrid_View1.Rows)
+            {
+                if ((item.Cells[0].Value != null) && (item.Cells[1].Value != null))
+                {
+                    cHs += int.Parse(item.Cells[1].Value.ToString());
+                }
+            }
+            double wH = wHs * cHs;
+
+            double wLs = (swNetData.l1) * (swNetData.d2 / 2) * (swNetData.d2 / 2) * Math.PI * 7800;
+          
+            foreach (DataGridViewRow item in dataGrid_View2.Rows)
+            {
+                if ((item.Cells[0].Value != null) && (item.Cells[1].Value != null))
+                {
+                    cLs += int.Parse(item.Cells[1].Value.ToString());
+                }
+            }
+
+            double wL = wLs * cLs;
+
+            wL += wH;
+
+            textBox1.Text=wL.ToString("0.000");
+
+        }
+
+        private void tB_D1_BindingContextChanged(object sender, EventArgs e)
+        {
+
         }
     }
 }

@@ -35,7 +35,6 @@ namespace SolidNet
         public double d1 { get { return D1 /1000.0; } }
         public double d2 { get { return D2 / 1000.0; } }
 
-
         public double l1 { get { return L1 / 1000.0; } }
 
     }
