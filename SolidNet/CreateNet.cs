@@ -1,4 +1,5 @@
-﻿using PSWStandalone;
+﻿using Newtonsoft.Json;
+using PSWStandalone;
 using SolidWorks.Interop.sldworks;
 using SolidWorks.Interop.swconst;
 using System;
@@ -7,9 +8,11 @@ using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Net.Mail;
 using System.Reflection;
+using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -39,19 +42,19 @@ namespace SolidNet
             {
                 if (ctrl is System.Windows.Forms.TextBox)
                 {
-                    ctrl.TextChanged += new EventHandler(WTextChanged);
+                   ctrl.MouseCaptureChanged+= new EventHandler(WTextChanged);
                 }
 
             }
 
 
 
-            DataColumn dt1_col1 = new DataColumn("间距",typeof(int));
+            DataColumn dt1_col1 = new DataColumn("间距",typeof(double));
             DataColumn dt1_col2 = new DataColumn("数量", typeof(int));
 
       
 
-            DataColumn dt2_col1 = new DataColumn("间距", typeof(int));
+            DataColumn dt2_col1 = new DataColumn("间距", typeof(double));
             DataColumn dt2_col2 = new DataColumn("数量", typeof(int));
 
             dt1.Columns.Add(dt1_col1);
@@ -89,7 +92,7 @@ namespace SolidNet
                 this.dataGrid_View2.Columns[i].SortMode = DataGridViewColumnSortMode.NotSortable;
             }
 
-            dataGrid_View2.Rows[0].Cells[0].Value = "50";
+            dataGrid_View2.Rows[0].Cells[0].Value = "50.0";
             dataGrid_View2.Rows[0].Cells[1].Value = "10";
             dataGrid_View2.AutoGenerateColumns = true;
             dataGrid_View2.RowHeadersVisible = false;
@@ -98,14 +101,16 @@ namespace SolidNet
             dataGrid_View2.AllowUserToResizeRows = false;
 
 
-            //swNetData.D1 = 4;
-            //tB_D1.DataBindings.Add("Text", swNetData, "D1", false, DataSourceUpdateMode.OnPropertyChanged);
+            swNetData.D1 = 3.0;
+            tB_D1.DataBindings.Add("Text", swNetData, "D1", true, DataSourceUpdateMode.OnPropertyChanged,null,"0.0");
 
-            //swNetData.D2 = 3;
-            //tB_D2.DataBindings.Add("Text", swNetData, "D2", false, DataSourceUpdateMode.OnPropertyChanged);
+            swNetData.D2 = 3.0;
+            tB_D2.DataBindings.Add("Text", swNetData, "D2", true, DataSourceUpdateMode.OnPropertyChanged,null, "0.0");
 
-            tB_D2.Text = "3.0";
-            tB_D1.Text = "4.0";
+            //tB_D2.Text = "3.0";
+            //tB_D1.Text = "3.0";
+
+           
 
             swNetData.H = 500;
             tB_H.DataBindings.Add("Text", swNetData, "H", false, DataSourceUpdateMode.OnPropertyChanged);
@@ -192,12 +197,16 @@ namespace SolidNet
                   
 
                     if(swNetData.hs1 != 0)
-                    { 
-                        swModel.SketchManager.CreateLine(0, 0, 0, -0.003, swNetData.hs1, 0);
+                    {
+
+                        double Lsin = Math.Abs(swNetData.hs1 / Math.Sin(SMath.toRadians(swNetData.Hd1)));
+                        double Lx = Lsin * Math.Cos(SMath.toRadians(swNetData.Hd1));
+                        double Ly = Lsin * Math.Sin(SMath.toRadians(swNetData.Hd1));
+                        swModel.SketchManager.CreateLine(0, 0, 0, Lx, Ly, 0);
                         add_LinName();
-                        swModel.Extension.SelectByID2(str_LinName(LineNames.Count-1), "SKETCHSEGMENT", 0, 0, 0, false, 0, null, 0);
+                        swModel.Extension.SelectByID2(str_LinName(LineNames.Count - 1), "SKETCHSEGMENT", 0, 0, 0, false, 0, null, 0);
                         swModel.Extension.SelectByID2(str_LinName(0), "SKETCHSEGMENT", 0, 0, 0, true, 0, null, 0);
-                        swModel.AddDimension2(2E-03, 0, -1E-03);
+                        swModel.AddDimension2(Lx - (2E-02), 0, 1E-02);
                         tp_dim = (Dimension)swModel.Parameter("D2@草图1");
                         tp_dim.Name = "HDelta1";
                         tp_dim.SystemValue = SMath.toRadians(swNetData.hd1);
@@ -221,17 +230,21 @@ namespace SolidNet
 
                     if (swNetData.hs2!=0)
                     {
-                        swModel.SketchManager.CreateLine(swNetData.h, 0, 0, swNetData.h + 0.003, swNetData.hs2, 0);
+                        double Lsin = Math.Abs(swNetData.hs2 / Math.Sin(SMath.toRadians(180-swNetData.Hd2)));
+                        double Lx = Lsin * Math.Cos(SMath.toRadians(180 - swNetData.Hd2));
+                        double Ly = Lsin * Math.Sin(SMath.toRadians(180 - swNetData.Hd2));
+
+                        swModel.SketchManager.CreateLine(swNetData.h, 0, 0, swNetData.h + Lx, Ly, 0);
                         add_LinName();
+                        //swModel.Extension.SelectByID2(str_LinName(LineNames.Count - 1), "SKETCHSEGMENT", 0, 0, 0, false, 0, null, 0);
+                        //swModel.Extension.SelectByID2(str_LinName(0), "SKETCHSEGMENT", 0, 0, 0, true, 0, null, 0);
+                        //swModel.AddDimension2(swNetData.h + Lx - (2E-02),0, 1E-02);
+                        //tp_dim = (Dimension)swModel.Parameter("D2@草图1");
+                        //tp_dim.Name = "HDelta2";
+                        //tp_dim.SystemValue = SMath.toRadians(swNetData.hd2);
+
                         swModel.Extension.SelectByID2(str_LinName(LineNames.Count-1), "SKETCHSEGMENT", 0, 0, 0, false, 0, null, 0);
-                        swModel.Extension.SelectByID2(str_LinName(0), "SKETCHSEGMENT", 0, 0, 0, true, 0, null, 0);
-                        swModel.AddDimension2(swNetData.h-(2E-03), 0, -1E-03);
-                        tp_dim = (Dimension)swModel.Parameter("D2@草图1");
-                        tp_dim.Name = "HDelta2";
-                        tp_dim.SystemValue = SMath.toRadians(swNetData.hd2);
-                        
-                        swModel.Extension.SelectByID2(str_LinName(LineNames.Count-1), "SKETCHSEGMENT", 0, 0, 0, false, 0, null, 0);
-                        if(swModel.AddVerticalDimension2(swNetData.h + (2E-03), 0, -1E-03)!=null)
+                        if(swModel.AddVerticalDimension2(swNetData.h + (2E-02), 0, -1E-02)!=null)
                         {
                             tp_dim = (Dimension)swModel.Parameter("D2@草图1");
                             tp_dim.Name = "Hs2";
@@ -314,24 +327,25 @@ namespace SolidNet
                         double offy = swNetData.hs1 - swNetData.d2 / 2;
                         if (swNetData.hd1 != 0)
                         {
-                            double Lsin = swNetData.hs1 / Math.Sin(SMath.toRadians(180 - swNetData.Hd1));
-                            double Lx = Lsin * Math.Cos(SMath.toRadians(180 - swNetData.Hd1));
-                            double x = (swNetData.d1) / 2;
-                            double y = dy;
+                            double Lsin = Math.Abs(swNetData.hs1 / Math.Sin(SMath.toRadians(swNetData.Hd1)));
+                            double Lx = Lsin * Math.Cos(SMath.toRadians(swNetData.Hd1));
+                            double Ly = Lsin * Math.Sin(SMath.toRadians(swNetData.Hd1));
+                            double x = -(swNetData.d1) / 2;
+                            double y = -dy;
                             double xp = x * Math.Cos(SMath.toRadians(-swNetData.Hd1)) - y * Math.Sin(SMath.toRadians(-swNetData.Hd1));
                             double yp = x * Math.Sin(SMath.toRadians(-swNetData.Hd1)) + y * Math.Cos(SMath.toRadians(-swNetData.Hd1));
 
                             offx = Lx + xp;
-                            offy = swNetData.hs1 + yp;
+                            offy = Ly>0?swNetData.hs1 - yp : -swNetData.hs1 - yp ;
                         }
 
-                        double hs1x = 0 - offx;
+                        double hs1x = offx;
 
                         swModel.SketchManager.CreateCircle(hs1x, offy, 0, hs1x + swNetData.d2 / 2, offy, 0);
 
 
-                        Xnoths1 = swNetData.d2 * 2;
-                        swModel.SketchManager.CreateCircle(Xnoths1, -dy, 0, Xnoths1 + swNetData.d2 / 2, -dy, 0);
+                        Xnoths1 = -swNetData.d2 / 2;
+                        //swModel.SketchManager.CreateCircle(Xnoths1, -dy, 0, Xnoths1 + swNetData.d2 / 2, -dy, 0);
 
                         foreach (DataGridViewRow item in dataGrid_View2.Rows)
                         {
@@ -374,17 +388,17 @@ namespace SolidNet
                         double offy = swNetData.hs2 - swNetData.d2 / 2;
                         if (swNetData.hd2 != 0)
                         {
-                            double Lsin = swNetData.hs2/Math.Sin(SMath.toRadians(180 - swNetData.Hd2));
+                            double Lsin = Math.Abs(swNetData.hs2/Math.Sin(SMath.toRadians(180-swNetData.Hd2)));
                             double Lx = Lsin * Math.Cos(SMath.toRadians(180 - swNetData.Hd2));
-                            
+                            double Ly = Lsin * Math.Sin(SMath.toRadians(180 - swNetData.Hd2));
                             double x = (swNetData.d2) / 2;
-                            double y = (swNetData.d1 + swNetData.d2) / 2.5;
+                            double y = dy;
                             
                             double xp = x * Math.Cos(SMath.toRadians(- swNetData.Hd2))  - y * Math.Sin(SMath.toRadians(-swNetData.Hd2));
                             double yp = x * Math.Sin(SMath.toRadians(- swNetData.Hd2)) + y * Math.Cos(SMath.toRadians(-swNetData.Hd2));
 
-                            offx = Lx+xp;
-                            offy = swNetData.hs2 + yp;
+                            offx = Lx + xp;
+                            offy = (Ly > 0 ? swNetData.hs2 : -swNetData.hs2) + yp;
                         }
 
                         hs1x = swNetData.h + offx;
@@ -415,6 +429,13 @@ namespace SolidNet
 
                     ModelDocExtension swModelDocExt= swModel.Extension;
 
+                    //写入属性
+                    swApp.SetUserPreferenceToggle((int)swUserPreferenceToggle_e.swInputDimValOnCreate, InputDimFlag);
+                    //CustomPropertyManager swCustProp = ((Configuration)swModel.GetActiveConfiguration()).CustomPropertyManager;
+                    CustomPropertyManager swCustProp = (CustomPropertyManager)swModelDocExt.get_CustomPropertyManager("");
+                    int bRet = swCustProp.Add3("SWNetData", (int)swCustomInfoType_e.swCustomInfoText, Conver_json(), (int)swCustomPropertyAddOption_e.swCustomPropertyDeleteAndAdd); ;
+                    //swCustProp.Set2("SWNetData","4625");
+
                     int massStatus = 0;
                     double[] massProperties;
                     massProperties = (double[])swModelDocExt.GetMassProperties(1, ref massStatus);
@@ -427,9 +448,10 @@ namespace SolidNet
                     swModel.ShowNamedView2("*等轴测", 7);
                     swModel.ViewZoomtofit2();
                     //Debug.Print(" Mass = " + massProperties[5]);
-                    swApp.SetUserPreferenceToggle((int)swUserPreferenceToggle_e.swInputDimValOnCreate, InputDimFlag);
+            
+
                     MessageBox.Show( $"重量:  {massProperties[5].ToString("0.0000")}  Kg\r\n"+
-                        $"密度:   {massProperties[5] / massProperties[3]}  千克/立方米 ", "质量信息");
+                        $"密度:   {massProperties[5] / massProperties[3]}  千克/立方米 ", $"质量信息{bRet}");
 
 
                 }
@@ -496,7 +518,7 @@ namespace SolidNet
                 Ltmp += swNetData.D1;
 
                 //swNetData.L1 = Ltmp;
-                this.tB_L1.Text = Ltmp.ToString();
+                this.tb_L1_t.Text = Ltmp.ToString();
 
             }
             catch (Exception)
@@ -520,10 +542,11 @@ namespace SolidNet
                        Htmp += double.Parse(item.Cells[0].Value.ToString()) * int.Parse(item.Cells[1].Value.ToString());
                     }
                 }
-       
+
 
                 //swNetData.L1 = Ltmp;
-                this.tB_H.Text = Htmp.ToString();
+                //swNetData.H = Htmp;
+                this.tb_H_t.Text = Htmp.ToString();
 
             }
             catch (Exception)
@@ -536,9 +559,15 @@ namespace SolidNet
         {
 
         }
-
+        bool noreading=true;
         private void WTextChanged(object sender, EventArgs e)
         {
+
+            if (noreading)
+            {       
+                dataGrid_View2_CellEndEdit(null, null);
+                dataGrid_View1_CellEndEdit(null, null);
+            }
 
             double Lhs1 = 0;
             double Lhs2 = 0;
@@ -572,7 +601,16 @@ namespace SolidNet
             {
                 if ((item.Cells[0].Value != null) && (item.Cells[1].Value != null))
                 {
-                    cHs += int.Parse(item.Cells[1].Value.ToString());
+                    try
+                    {
+                        cHs += int.Parse(item.Cells[1].Value.ToString());
+                    }
+                    catch (Exception)
+                    {
+
+                        continue;
+                    }
+                  
                 }
             }
             double wH = wHs * cHs;
@@ -591,13 +629,104 @@ namespace SolidNet
 
             wL += wH;
 
-            textBox1.Text=wL.ToString("0.000");
+            textBox_mess.Text=wL.ToString("0.000");
+
+            if (tb_H_t.Text != tB_H.Text)
+            {
+                tB_H.BackColor = Color.Red;
+            }
+            else
+            {
+                tB_H.BackColor = Color.FromArgb(192, 255, 192);
+            }
+
+            if (tb_L1_t.Text != tB_L1.Text)
+            {
+                tB_L1.BackColor = Color.Red;
+            }
+            else
+            {
+                tB_L1.BackColor = Color.FromArgb(192, 255, 192);
+            }
 
         }
 
-        private void tB_D1_BindingContextChanged(object sender, EventArgs e)
+
+
+        JsonClassData classData;
+  
+        public string Conver_json()
         {
 
+            JsonClassData data=new JsonClassData();
+            string JsonString = string.Empty;
+            data.D1 = JsonConvert.SerializeObject(dt1);
+            data.D2 = JsonConvert.SerializeObject(dt2);
+            data.Net = JsonConvert.SerializeObject(swNetData);
+
+            JsonString = JsonConvert.SerializeObject(data);
+
+
+            return JsonString;
+ 
+        }
+
+
+        string SWNetData_valout = string.Empty;
+
+
+        private void OpenSWNetFile_Click(object sender, EventArgs e)
+        {
+            string partDefault=string.Empty;
+            string val = string.Empty;
+       
+
+            SldWorks swApp = ConnectToSolidWorks();
+            if (swApp != null)
+            {
+                noreading=false;
+                OpenFileDialog openFileDialog = new OpenFileDialog
+                {
+                    Filter = "SOLIDWORKS Part(*.SLDPRT)|*.SLDPRT"
+                };
+
+                openFileDialog.RestoreDirectory = true;
+                openFileDialog.FilterIndex = 1;
+                if (openFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    partDefault=openFileDialog.FileName;
+                    var newDoc = swApp.NewDocument(partDefault, 0, 0, 0);
+
+                    ModelDoc2 swModel = (ModelDoc2)swApp.ActiveDoc; //当前零件
+                    ModelDocExtension swModelDocExt = (ModelDocExtension)swModel.Extension;
+                    CustomPropertyManager swCustProp = (CustomPropertyManager)swModelDocExt.get_CustomPropertyManager("");
+
+                    bool status=swCustProp.Get4("SWNetData", false, out val, out SWNetData_valout);
+                    if (status)
+                    {
+                        Debug.Print("Evaluated value:          " + SWNetData_valout);
+                        classData = JsonConvert.DeserializeObject<JsonClassData>(SWNetData_valout);
+                        try
+                        {
+                            dt1 = JsonConvert.DeserializeObject<DataTable>(classData.D1);
+                            dt2 = JsonConvert.DeserializeObject<DataTable>(classData.D2);
+                            swNetData.SetData(JsonConvert.DeserializeObject<SwNetData>(classData.Net));
+                            dataGrid_View1.DataSource = dt1;
+                            dataGrid_View2.DataSource = dt2;
+                        }
+                        catch (Exception)
+                        {
+                            MessageBox.Show("读取失败",e.ToString());
+                        }
+                    
+
+                    }
+                 
+                    
+                }
+
+            }
+            noreading = true;
         }
     }
 }
